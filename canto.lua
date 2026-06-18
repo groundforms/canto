@@ -1,5 +1,5 @@
 -- canto
--- v0.4 — nb voice layer
+-- v0.4.1 — nb voice layer (robust nb discovery + status)
 --
 -- Performance instrument for Canto Ostinato. Four independent, free-floating
 -- players. The VOICE for each player is now provided by nb (note-blok): assign
@@ -28,15 +28,19 @@
 local music = require "musicutil"
 local cells = include("canto/lib/canto_cells")  -- table indexed [1..N]
 
--- nb: try vendored copy first, then an installed "nb" project
-local nb
-local function try_include(path)
+-- nb: search several likely locations (vendored or installed as a project)
+local nb, nb_path
+local NB_PATHS = {
+  "canto/lib/nb/lib/nb",
+  "canto/lib/nb/nb",
+  "nb/lib/nb",
+  "nb/nb",
+}
+for _, p in ipairs(NB_PATHS) do
   local m
-  local ok = pcall(function() m = include(path) end)
-  if ok then return m end
-  return nil
+  local ok = pcall(function() m = include(p) end)
+  if ok and m then nb = m; nb_path = p; break end
 end
-nb = try_include("canto/lib/nb/lib/nb") or try_include("nb/lib/nb")
 
 local NUM_PLAYERS      = 4
 local PADS_PER_ROW     = 13
@@ -474,6 +478,9 @@ function redraw()
     screen.level(3); screen.move(0, 32); screen.text("no cells loaded"); screen.update(); return
   end
   if page == "overview" then redraw_overview() else redraw_detail() end
+  if not nb then
+    screen.level(15); screen.move(64, 63); screen.text_center("nb not loaded - see README")
+  end
   screen.update()
 end
 
@@ -524,14 +531,24 @@ function init()
   end
 
   if nb then
-    nb:init()
-    for pi = 1, NUM_PLAYERS do
-      nb:add_param("voice_" .. pi, "P" .. pi .. " " .. PLAYER_DEFS[pi].name .. " voice")
+    local ok, err = pcall(function()
+      nb:init()
+      for pi = 1, NUM_PLAYERS do
+        nb:add_param("voice_" .. pi, "P" .. pi .. " " .. PLAYER_DEFS[pi].name .. " voice")
+      end
+      nb:add_player_params()
+    end)
+    if ok then
+      print("canto: nb loaded from '" .. tostring(nb_path) .. "'")
+    else
+      print("canto: nb setup FAILED -> " .. tostring(err))
+      nb = nil
     end
-    nb:add_player_params()
-  else
-    print("canto: nb NOT found — install it (maiden: 'nb') or vendor it to " ..
-          "lib/nb. The instrument runs but stays silent until nb is present.")
+  end
+  if not nb then
+    print("canto: nb NOT loaded. Put nb at dust/code/nb (install the 'nb' " ..
+          "project) or vendor it to dust/code/canto/lib/nb. Grid+screen work " ..
+          "but there is no sound until nb is present.")
   end
 
   params:add_separator("canto_sep", "canto")
