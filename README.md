@@ -1,48 +1,38 @@
-# canto — v0.1 script (build steps 2-3)
+# canto — v0.4 (nb voice layer)
 
-Engine + four voice profiles + single-cell looper. This is the foundation
-the four-player grid instrument is built on; here you drive one "player"
-from the keys to confirm the engine, the profiles, and cell timing/looping.
+Four free-floating players for Canto Ostinato. Each player's VOICE is now any
+nb (note-blok) voice you assign — your Plaits clone, mx.synths, PolyPerc, or
+MIDI/crow out to the modular. No shared-engine bleed; each player is its own
+voice with its own params.
 
 ## Install
-1. Copy this whole `canto` folder into `dust/code/` on the Norns
-   (so the data file lands at `dust/code/canto/lib/canto_cells.lua`).
-2. Requires the **MollyThePoly** engine (install via maiden if not present:
-   it ships with the `molly_the_poly` script — having that script installed
-   makes the engine available).
-3. SYSTEM > RESET, then load `canto`.
+1. Copy the `canto` folder into `dust/code/` (data at
+   `dust/code/canto/lib/canto_cells.lua`).
+2. **nb is required.** The script finds it automatically if either is true:
+   - nb is installed as a project at `dust/code/nb`  (it'll use `nb/lib/nb`), OR
+   - you vendor it: copy your `nb` folder to `dust/code/canto/lib/nb`
+     (so `dust/code/canto/lib/nb/lib/nb.lua` exists).
+   If nb isn't found, canto still loads (grid + screen work) but stays silent
+   and prints a note to maiden.
+3. Reload. In **PARAMS > EDIT** you'll see four voice selectors:
+   `P1 Pulse voice` … `P4 Lead voice`. Assign a voice to each (e.g. your
+   Plaits clone on P1/P4, soft pads on P2/P3). Each voice's own parameters
+   appear in the menu under nb.
 
-## Controls
-- ENC1 — tempo (clock bpm), defaults to 75
-- ENC2 — select cell (1..116)
-- ENC3 — select profile (Pulse / Body L / Body R / Lead)
-- KEY3 — start / restart the selected cell looping
-- KEY2 — stop
+## Playing
+GRID — 4 players, 2 rows each. Cols 1-13 cell pads; col 14 REC / 15 MUTE /
+16 STOP. Tap a pad to launch/queue; long-hold (3s) a pad stops that player.
+REC: arm -> records on first pad press -> press to stop+loop -> hold to
+overdub -> long-press (stopped) to clear.
 
-## What success looks like
-- Picking a cell and hitting KEY3 loops it cleanly at the set tempo; the phase
-  bar fills once per loop and resets exactly at the cell boundary.
-- Changing tempo (ENC1) speeds/slows the loop proportionally.
-- Switching profile (ENC3) + KEY3 changes the timbre audibly:
-  Pulse = short plucky; Body = slow soft pad; Lead = brighter, long release.
-- maiden prints the cell's length in beats and seconds on each start, so you
-  can check the loop period against the clock.
+NORNS — KEY1 Overview/Detail. ENC1 tempo. Overview: ENC2 focus, ENC3 seed,
+KEY2 stop-all, KEY3 re-roll. Detail: ENC2 level, ENC3 **voice select for the
+focused player**, KEY2 mute, KEY3 stop.
 
-## Notes / caveats
-- Profile param NAMES target MollyThePoly's standard engine commands. If a
-  param seems to do nothing, check it against your installed MollyThePoly
-  version's command list — the engine silently ignores unknown commands.
-- MollyThePoly params are GLOBAL. For one player at a time this is fine. When
-  we add four simultaneous players, continuous params (e.g. live filter sweeps)
-  will bleed across players on a single engine instance — that shared-param
-  limit is the main reason the bespoke per-voice engine is the v0.x voice step.
-  Envelope/wave/level/detune latch per voice at note-on, so the four profiles
-  will still read as distinct even when overlapping.
-- Polyphony caps (per the spec) are not enforced yet — dense cells lean on
-  MollyThePoly's own voice limit. Caps arrive with the multi-player build.
-
-## Next build steps (from the spec)
-4. Player state machine (queue-to-cell-boundary launch, loop, long-hold stop)
-5. Grid handler (4 players x 2 rows, cell pads + REC/MUTE/STOP)
-6. Record key state machine
-7. Global mixer screen  8. 16n routing  9. Random seeded cell map
+## Notes
+- MollyThePoly is no longer used; you can ignore it for canto now.
+- Per-player polyphony caps (Pulse 2, Body 4/4, Lead 3) still apply on top of
+  whatever the assigned nb voice does — oldest note is stolen past the cap.
+- Per-player level works (velocity scale). Pan + shared FX is still the mixer
+  step; with nb you can also just pan/treat each voice in its own nb params or
+  outboard.
