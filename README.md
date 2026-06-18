@@ -1,38 +1,71 @@
-# canto — v0.4 (nb voice layer)
+# canto
 
-Four free-floating players for Canto Ostinato. Each player's VOICE is now any
-nb (note-blok) voice you assign — your Plaits clone, mx.synths, PolyPerc, or
-MIDI/crow out to the modular. No shared-engine bleed; each player is its own
-voice with its own params.
+A Norns + grid performance instrument for Simeon ten Holt's *Canto Ostinato*.
+Four independent, free-floating "players" launch and loop cells extracted from
+the score; they share the clock's pulse but not a downbeat, so they phase. Each
+player's voice is provided by **nb**, so you assign any installed voice per
+player (a Plaits clone, mx.synths, PolyPerc, MIDI/crow out to the modular, …).
 
-## Install
-1. Copy the `canto` folder into `dust/code/` (data at
-   `dust/code/canto/lib/canto_cells.lua`).
-2. **nb is required.** The script finds it automatically if either is true:
-   - nb is installed as a project at `dust/code/nb`  (it'll use `nb/lib/nb`), OR
-   - you vendor it: copy your `nb` folder to `dust/code/canto/lib/nb`
-     (so `dust/code/canto/lib/nb/lib/nb.lua` exists).
-   If nb isn't found, canto still loads (grid + screen work) but stays silent
-   and prints a note to maiden.
-3. Reload. In **PARAMS > EDIT** you'll see four voice selectors:
-   `P1 Pulse voice` … `P4 Lead voice`. Assign a voice to each (e.g. your
-   Plaits clone on P1/P4, soft pads on P2/P3). Each voice's own parameters
-   appear in the menu under nb.
+Requires a 128 grid. The 116 cells are pre-baked into `lib/canto_cells.lua`.
+
+## Install (maiden)
+
+    ;install https://github.com/USERNAME/canto
+
+This clones the repo to `dust/code/canto` and Norns loads `canto.lua`.
+
+### Updating (no delete needed)
+- maiden: open the project and use its update/pull action, **or**
+- ssh: `ssh we@norns.local` then `cd ~/dust/code/canto && git pull`
+
+Then reload the script. Your params/psets in `dust/data/canto/` survive updates.
+Keep edits one-way (commit from your machine, Norns only pulls) to avoid merge
+conflicts on `git pull`.
+
+## nb (required)
+
+The script finds nb automatically if either is true:
+- nb is installed as its own project at `dust/code/nb`  → uses `nb/lib/nb`, or
+- nb is vendored into this repo at `lib/nb`            → uses `lib/nb/lib/nb`
+
+To vendor nb as a **git submodule** (so it updates independently and `;install`
+pulls it too), from the repo root:
+
+    git submodule add <NB_REPO_URL> lib/nb
+    git commit -m "add nb as submodule"
+
+Use the same nb repo you installed via maiden as `<NB_REPO_URL>`. When others
+(or you) clone, fetch submodules with `git clone --recurse-submodules …` or
+`git submodule update --init`. maiden's `;install` handles submodules.
+
+If nb isn't found, canto still loads (grid + screen work) but stays silent and
+says so in maiden.
 
 ## Playing
-GRID — 4 players, 2 rows each. Cols 1-13 cell pads; col 14 REC / 15 MUTE /
-16 STOP. Tap a pad to launch/queue; long-hold (3s) a pad stops that player.
-REC: arm -> records on first pad press -> press to stop+loop -> hold to
-overdub -> long-press (stopped) to clear.
 
-NORNS — KEY1 Overview/Detail. ENC1 tempo. Overview: ENC2 focus, ENC3 seed,
-KEY2 stop-all, KEY3 re-roll. Detail: ENC2 level, ENC3 **voice select for the
-focused player**, KEY2 mute, KEY3 stop.
+Assign voices in **PARAMS > EDIT** (`P1 Pulse voice` … `P4 Lead voice`).
+
+GRID — 4 players, 2 rows each. Cols 1-13 = cell pads (26/player). Col 14 REC /
+15 MUTE / 16 STOP (mirrored on both of a player's rows). Tap a pad to launch
+(immediate if idle) or queue (launches at the current cell's boundary); long-
+hold a pad (3s) stops that player. Cell LEDs: dim available / bright playing /
+pulse queued.
+
+REC (per player): press to arm → recording starts on your next pad press →
+press to stop + loop → hold to overdub → long-press (when stopped) to clear.
+Loop end snaps to the current cell boundary.
+
+NORNS — KEY1 toggles Overview / Player detail (detail follows the grid). ENC1
+tempo. Overview: ENC2 focus, ENC3 seed, KEY2 stop-all, KEY3 re-roll the cell
+map. Detail: ENC2 level, ENC3 voice, KEY2 mute, KEY3 stop.
 
 ## Notes
-- MollyThePoly is no longer used; you can ignore it for canto now.
-- Per-player polyphony caps (Pulse 2, Body 4/4, Lead 3) still apply on top of
-  whatever the assigned nb voice does — oldest note is stolen past the cap.
-- Per-player level works (velocity scale). Pan + shared FX is still the mixer
-  step; with nb you can also just pan/treat each voice in its own nb params or
-  outboard.
+- Per-player polyphony caps (Pulse 2, Body 4/4, Lead 3) sit on top of the
+  assigned voice — oldest note stolen past the cap.
+- Per-player level = velocity scale. Pan + shared FX is a later mixer step.
+- The 116 cell MIDIs (for Ableton) and a JSON copy of the data are not in this
+  repo — they're source material kept alongside the project.
+
+## Roadmap
+7. Global mixer (true per-player level/pan, shared reverb/echo)
+8. 16n faderbank → 4 params/player, captured by the recorders
