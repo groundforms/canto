@@ -66,6 +66,15 @@ map. Detail: ENC2 level, ENC3 voice, KEY2 mute, KEY3 stop.
 - The 116 cell MIDIs (for Ableton) and a JSON copy of the data are not in this
   repo — they're source material kept alongside the project.
 
+
+## Voice constraint to know about
+Some nb voice packs back onto a single shared engine instance — notably
+**mxsynths** and other sample-based packs load *one instrument at a time*. If
+two players both select an mxsynths voice, they share that one loaded sound;
+you can't have two different mxsynths patches at once. For genuinely different
+timbres per player, use voices that instantiate independently (a Plaits clone,
+doubledecker, per-voice engines). Same pack on two players = same sound.
+
 ## Roadmap
 7. Global mixer (true per-player level/pan, shared reverb/echo)
 8. 16n faderbank → 4 params/player, captured by the recorders

@@ -1,5 +1,5 @@
 -- canto
--- v0.4.1 — nb voice layer (robust nb discovery + status)
+-- v0.4.3 — voice-allocation invariant, panic sweep, 1.5s latched hold-stop
 --
 -- Performance instrument for Canto Ostinato. Four independent, free-floating
 -- players. The VOICE for each player is now provided by nb (note-blok): assign
@@ -45,7 +45,7 @@ end
 local NUM_PLAYERS      = 4
 local PADS_PER_ROW     = 13
 local CELLS_PER_PLAYER = PADS_PER_ROW * 2  -- 26
-local HOLD_STOP_S      = 3.0
+local HOLD_STOP_S      = 1.5
 local REC_CLEAR_S      = 3.0
 local OVERDUB_S        = 0.3
 
@@ -80,43 +80,54 @@ local recpress = {}  -- REC key press info, keyed by player index
 -- ----------------------------------------------------------------------------
 local function nb_player(pi)
   if not nb then return nil end
-  return nb:get_player("voice_" .. pi)
+  local ok, p = pcall(function()
+    return params:lookup_param("voice_" .. pi):get_player()
+  end)
+  if ok then return p end
+  return nil
 end
 
 local function voice_on(pi, note, vel)
   local pl = players[pi]
-  pl.refcount[note] = (pl.refcount[note] or 0) + 1
-  if pl.refcount[note] > 1 then return end          -- already sounding
-  while #pl.order >= pl.cap do                       -- steal oldest distinct note
+  -- already sounding this pitch? bump the refcount, send nothing (one on per pitch)
+  if pl.refcount[note] and pl.refcount[note] > 0 then
+    pl.refcount[note] = pl.refcount[note] + 1
+    return
+  end
+  local p = nb_player(pi)
+  while #pl.order >= pl.cap do                       -- cap on DISTINCT pitches
     local oldest = table.remove(pl.order, 1)
     if not oldest then break end
-    local p = nb_player(pi); if p then p:note_off(oldest) end
+    if p then p:note_off(oldest) end
     pl.refcount[oldest] = nil
   end
-  local p = nb_player(pi); if p then p:note_on(note, vel) end
+  pl.refcount[note] = 1
   pl.order[#pl.order + 1] = note
+  if p then p:note_on(note, vel) end
 end
 
 local function voice_off(pi, note)
   local pl = players[pi]
   local c = pl.refcount[note]
   if not c then return end
-  c = c - 1
-  if c <= 0 then
-    pl.refcount[note] = nil
-    local p = nb_player(pi); if p then p:note_off(note) end
-    for i = #pl.order, 1, -1 do
-      if pl.order[i] == note then table.remove(pl.order, i) break end
-    end
-  else
-    pl.refcount[note] = c
+  if c > 1 then
+    pl.refcount[note] = c - 1                         -- other holders remain
+    return
   end
+  pl.refcount[note] = nil                             -- last holder: one off
+  for i = #pl.order, 1, -1 do
+    if pl.order[i] == note then table.remove(pl.order, i) break end
+  end
+  local p = nb_player(pi); if p then p:note_off(note) end
 end
 
 local function all_voices_off(pi)
   local pl = players[pi]
   local p = nb_player(pi)
-  for note in pairs(pl.refcount) do if p then p:note_off(note) end end
+  if p then
+    for note in pairs(pl.refcount) do p:note_off(note) end
+    for n = 0, 127 do p:note_off(n) end               -- panic sweep: nothing hangs
+  end
   pl.refcount = {}; pl.order = {}
 end
 
@@ -321,16 +332,19 @@ local function handle_cell_key(pi, slot, x, y, z)
     hold[k] = h
     h.timer = clock.run(function()
       clock.sleep(HOLD_STOP_S)
-      if hold[k] == h then h.longfired = true; player_stop(pi) end
+      -- still the same press and still held? consume it as a long-hold stop
+      if hold[k] == h then
+        h.longfired = true
+        player_stop(pi)
+      end
     end)
   else
     local h = hold[k]; hold[k] = nil
     if h then
       if h.timer then clock.cancel(h.timer) end
-      if not h.longfired then
-        rec_record_launch(pi, slot)
-        player_launch(pi, slot, false)
-      end
+      if h.longfired then return end   -- hold already stopped the player; do nothing
+      rec_record_launch(pi, slot)
+      player_launch(pi, slot, false)
     end
   end
 end

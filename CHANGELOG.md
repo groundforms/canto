@@ -1,5 +1,19 @@
 # canto — changelog
 
+## v0.4.3
+- Fix: voice-allocation invariant — at most one note_on per pitch per player,
+  exactly one matching note_off. Cures indefinite hangs with by-pitch voices
+  like doubledecker, especially under voice-stealing.
+- all_voices_off() now does a full 0-127 panic sweep on stop (belt-and-braces).
+- Long-hold-to-stop shortened to 1.5s and properly latched, so the release
+  after a hold no longer relaunches the player. (STOP key, col 16, unchanged.)
+- README: note the mxsynths/sample-pack "one instrument at a time" constraint.
+
+## v0.4.2
+- Fix: this nb exposes get_player() on the *param object*, not nb:get_player(id).
+  nb_player() now calls params:lookup_param("voice_N"):get_player(), wrapped in
+  pcall so an unassigned slot is silent rather than crashing the clock. Sound!
+
 ## v0.4.1
 - Robust nb discovery (searches dust/code/nb and vendored lib/nb, several
   layouts); nb setup wrapped so a bad/missing nb can't brick init.
